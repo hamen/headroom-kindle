@@ -67,7 +67,8 @@ where
     let Some(reset) = reset else {
         return "--".to_string();
     };
-    let local = reset.with_timezone(&now.timezone());
+    // The APIs send instants like 20:59:59.6; show them as the minute they round to.
+    let local = (reset + Duration::seconds(30)).with_timezone(&now.timezone());
     if local.clone() - now.clone() < Duration::hours(24) {
         local.format("%H:%M").to_string()
     } else {
@@ -120,5 +121,7 @@ mod tests {
         assert_eq!(format_reset(&now, Some(soon)), "09:30");
         assert_eq!(format_reset(&now, Some(later)), "MON 09:00");
         assert_eq!(format_reset(&now, None), "--");
+        let almost = Utc.with_ymd_and_hms(2026, 10, 17, 18, 59, 59).unwrap();
+        assert_eq!(format_reset(&now, Some(almost)), "SAT 21:00");
     }
 }
