@@ -57,27 +57,22 @@ fn main() -> ExitCode {
         .build()
         .expect("Errore client HTTP");
 
-    // Checkerboard: black, white / white, black.
     let tiles = [
         Tile {
             name: "CLAUDE",
             quota: tokens::read_claude().and_then(|t| providers::claude::fetch(&client, &t)),
-            invert: true,
         },
         Tile {
             name: "CODEX",
             quota: tokens::read_codex().and_then(|t| providers::codex::fetch(&client, &t)),
-            invert: false,
         },
         Tile {
             name: "Z.AI",
             quota: tokens::read_zai().and_then(|k| providers::zai::fetch(&client, &k)),
-            invert: false,
         },
         Tile {
             name: "GROK",
             quota: tokens::read_grok().and_then(|t| providers::grok::fetch(&client, &t)),
-            invert: true,
         },
     ];
     for tile in &tiles {

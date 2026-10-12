@@ -6,7 +6,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 ## Project Structure
 - `src/main.rs`: the single binary: fetches the quota, renders the dashboard and draws it on the Kindle.
 - `src/providers/`: one quota fetcher per provider (`claude`, `codex`, `zai`, `grok`). `src/tokens.rs` reads the CLI logins, `src/quota.rs` holds the shared window/error types.
-- `src/render.rs`: the drawing code (`image` and `imageproc`). We use high-contrast thick fonts (`LiberationSans`) and a dark-tile UI paradigm because thin grey lines wash out on old E-Ink screens.
+- `src/render.rs`: the drawing code (`image` and `imageproc`). We use high-contrast thick fonts (`LiberationSans`) because thin grey lines wash out on old E-Ink screens. Tiles are white with a black border; a tile turns black when its tightest window has less than 20% left, so it stands out.
 - `tests/fixtures/`: hand-written sample responses for the parser tests (`cargo test`, no network).
 - `assets/`: Contains the font (`font.ttf`, LiberationSans Bold) used for rendering. All text is bold: thin text washes out on this e-ink, worst of all white on black.
 - `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, SFTP upload) and runs the screen takeover. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
@@ -14,7 +14,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
 
 ## How it works
-1. **Render**: The binary fetches the quota of the four providers and renders the dashboard (758x1024) in memory. The dashboard is drawn landscape (1024x758) for a Kindle standing on its long side with its top edge to the left, then turned 90 degrees clockwise into the portrait framebuffer. It is a 2x2 grid with one tile per provider: the big number is the percent left of the tightest window; on the right, two lines per window with its percent left and its reset time. The PNG must be 8-bit grayscale: `eips` draws an RGB PNG stretched to twice the width.
+1. **Render**: The binary fetches the quota of the four providers and renders the dashboard (758x1024) in memory. The dashboard is drawn landscape (1024x758) for a Kindle standing on its long side with its top edge to the left, then turned 90 degrees clockwise into the portrait framebuffer. A thin header shows the date and `updated HH:MM` (no clock: the screen changes only every 10 minutes). Below it, a 2x2 grid with one tile per provider: the big number is the percent left of the tightest window; on the right, two lines per window with its percent left and its reset time. The PNG must be 8-bit grayscale: `eips` draws an RGB PNG stretched to twice the width.
 2. **Push**: It connects to the Kindle via SSH over the USB cable (USBNetwork, Kindle `192.168.15.244`, PC `192.168.15.201` from the "Kindle USB" NetworkManager profile) and uploads `/mnt/us/dashboard.png`.
 3. **Display**: It stops the native Amazon UI (`stop lab126_gui 2>/dev/null`) and draws the PNG with `eips -g`. On the first run of each hour (or with `--full`) it clears the ghosting first (`eips -c` twice, then `eips -f -g`), which flashes the screen; the other runs redraw in place without a flash. The Kindle is left in a "zombie" state: the Amazon UI is off and the e-ink keeps the image with no power.
 
@@ -55,7 +55,7 @@ systemctl --user enable --now headroom-kindle.timer
 journalctl --user -u headroom-kindle   # one line per provider, then "kindle: drawn (...)"
 ```
 
-The binary exits 0 when the Kindle has drawn the image, even if a provider failed (that tile shows the error). It exits 1 when the Kindle cannot be reached or `eips` fails. When the PC is off or the cable is out, the Kindle keeps the last image; the big clock is the time of that render.
+The binary exits 0 when the Kindle has drawn the image, even if a provider failed (that tile shows the error). It exits 1 when the Kindle cannot be reached or `eips` fails. When the PC is off or the cable is out, the Kindle keeps the last image; `updated HH:MM` in the header shows how old it is.
 
 ## Inspiration & UI Design
 The UI of this dashboard is heavily inspired by two excellent open-source projects designed specifically for E-Ink displays:
