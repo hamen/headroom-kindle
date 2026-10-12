@@ -60,3 +60,5 @@ To restore the Kindle to normal reading mode, perform a hard reboot (hold the po
 ## 6. The Automation Pipeline (Paramiko & Rust)
 - **Rust Dashboard**: Generates the 758x1024 grayscale UI. We adopted a *Tesserae / Windows Phone* tile design, using completely black tiles with white text for maximum e-ink contrast, abandoning thinner fonts that washed out.
 - **Python Paramiko Deployment**: We abandoned bash `scp`/`ssh` because `ssh-agent` intercepted the calls and demanded local passphrases, breaking automation. We wrote `scripts/push_to_kindle.py` using `paramiko` to silently authenticate, upload `dashboard.png`, and execute the `eips` screen takeover in one go.
+- **Rust push (2026-10-12)**: The paramiko script moved into the Rust binary (`src/kindle.rs`, `ssh2` crate) so one executable fetches, renders and draws. Same flow: password login (no `ssh-agent`), SFTP upload, `eips` takeover. A systemd user timer runs it every 10 minutes over the USB cable.
+- **Grayscale only**: `eips -g` draws an RGB PNG stretched to twice the width (only the left half shows). The PNG must be 8-bit grayscale.

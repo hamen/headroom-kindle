@@ -1,0 +1,7 @@
+[Unit]
+Description=Render the AI quota dashboard and draw it on the Kindle
+
+[Service]
+Type=oneshot
+ExecStart=%h/.cargo/bin/headroom-kindle
+TimeoutStartSec=120

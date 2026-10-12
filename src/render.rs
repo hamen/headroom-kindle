@@ -1,11 +1,12 @@
 use crate::quota::{format_reset, percent_left, tightest, Problem, Window};
 use chrono::{DateTime, Local, TimeZone};
 use image::imageops::rotate90;
-use image::{DynamicImage, GrayImage, Rgb, RgbImage};
+use image::{DynamicImage, GrayImage, ImageOutputFormat, Rgb, RgbImage};
 use imageproc::drawing::{draw_filled_rect_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
 use rusttype::{Font, Scale};
 use std::fmt::Display;
+use std::io::Cursor;
 
 /// The Kindle framebuffer, portrait.
 pub const WIDTH: u32 = 758;
@@ -41,9 +42,9 @@ pub struct Fonts {
 
 impl Fonts {
     pub fn load() -> Fonts {
-        let bold = std::fs::read("assets/font.ttf").expect("Errore font.ttf");
+        // Embedded, so the binary runs from any directory (the systemd timer).
         Fonts {
-            bold: Font::try_from_vec(bold).unwrap(),
+            bold: Font::try_from_bytes(include_bytes!("../assets/font.ttf")).unwrap(),
         }
     }
 }
@@ -131,6 +132,15 @@ pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> GrayImage
     }
 
     DynamicImage::ImageRgb8(rotate90(&canvas)).into_luma8()
+}
+
+/// PNG bytes of the dashboard, ready to save or to send to the Kindle.
+pub fn png_bytes(image: &GrayImage) -> Vec<u8> {
+    let mut png = Vec::new();
+    image
+        .write_to(&mut Cursor::new(&mut png), ImageOutputFormat::Png)
+        .expect("PNG encoding to memory");
+    png
 }
 
 fn draw_tile(img: &mut RgbImage, fonts: &Fonts, x: u32, y: u32, tile: &Tile, text: &TileText) {
@@ -328,6 +338,10 @@ mod tests {
         ];
         let image = render(&Local::now(), &tiles, &Fonts::load());
         assert_eq!(image.dimensions(), (WIDTH, HEIGHT));
+        // eips needs an 8-bit grayscale PNG; an RGB one is drawn stretched.
+        let decoded = image::load_from_memory(&png_bytes(&image)).unwrap();
+        assert_eq!(decoded.color(), image::ColorType::L8);
+        assert_eq!((decoded.width(), decoded.height()), (WIDTH, HEIGHT));
         // The first tile (black, top-left of the landscape canvas) lands at the top-right of
         // the framebuffer after the clockwise turn.
         let (cx, cy) = (PADDING + 5, GRID_TOP + 5);
