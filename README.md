@@ -8,7 +8,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `src/providers/`: one quota fetcher per provider (`claude`, `codex`, `zai`, `grok`). `src/tokens.rs` reads the CLI logins, `src/quota.rs` holds the shared window/error types.
 - `src/render.rs`: the drawing code (`image` and `imageproc`). We use high-contrast thick fonts (`LiberationSans`) and a dark-tile UI paradigm because thin grey lines wash out on old E-Ink screens.
 - `tests/fixtures/`: hand-written sample responses for the parser tests (`cargo test`, no network).
-- `assets/`: Contains the fonts (`font.ttf`, `font_light.ttf`) used for rendering.
+- `assets/`: Contains the font (`font.ttf`, LiberationSans Bold) used for rendering. All text is bold: thin text washes out on this e-ink, worst of all white on black.
 - `scripts/push_to_kindle.py`: A Python script using `paramiko` to silently push the image to the Kindle via SSH and execute the screen takeover. (We chose `paramiko` to bypass local `ssh-agent` passphrase prompts that broke automation in bash).
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
 

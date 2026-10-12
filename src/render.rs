@@ -4,7 +4,7 @@ use image::imageops::rotate90;
 use image::{DynamicImage, GrayImage, Rgb, RgbImage};
 use imageproc::drawing::{draw_filled_rect_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
-use rusttype::{point, Font, Scale};
+use rusttype::{Font, Scale};
 use std::fmt::Display;
 
 /// The Kindle framebuffer, portrait.
@@ -23,29 +23,27 @@ const TILE_H: u32 = (CANVAS_H - GRID_TOP - PADDING * 2) / 2;
 const TEXT_X: u32 = 25;
 const SUB_INDENT: u32 = 5;
 /// The window lines sit in a right column; the big number and its sub line must stay left of it.
-const RIGHT_X: u32 = 290;
+const RIGHT_X: u32 = 265;
 
-const BIG: f32 = 96.0;
-const SUB: f32 = 30.0;
-const WINDOW: f32 = 34.0;
-const RESET: f32 = 28.0;
-const NAME: f32 = 35.0;
+/// All tile text is bold: thin text washes out on this e-ink, worst of all white on black.
+const BIG: f32 = 88.0;
+const SUB: f32 = 32.0;
+const WINDOW: f32 = 38.0;
+const RESET: f32 = 34.0;
+const NAME: f32 = 38.0;
 
 const BLACK: Rgb<u8> = Rgb([0, 0, 0]);
 const WHITE: Rgb<u8> = Rgb([255, 255, 255]);
 
 pub struct Fonts {
     bold: Font<'static>,
-    light: Font<'static>,
 }
 
 impl Fonts {
     pub fn load() -> Fonts {
         let bold = std::fs::read("assets/font.ttf").expect("Errore font.ttf");
-        let light = std::fs::read("assets/font_light.ttf").expect("Errore font_light.ttf");
         Fonts {
             bold: Font::try_from_vec(bold).unwrap(),
-            light: Font::try_from_vec(light).unwrap(),
         }
     }
 }
@@ -121,19 +119,8 @@ pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> GrayImage
         PADDING as i32 + 290,
         50,
         Scale::uniform(45.0),
-        &fonts.light,
+        &fonts.bold,
         &date_str,
-    );
-    let footer = "Headroom Tesserae System";
-    let footer_w = text_width(&fonts.light, 22.0, footer);
-    draw_text_mut(
-        &mut canvas,
-        BLACK,
-        (CANVAS_W - PADDING - footer_w) as i32,
-        68,
-        Scale::uniform(22.0),
-        &fonts.light,
-        footer,
     );
 
     // 2x2 grid, filled row by row.
@@ -188,9 +175,9 @@ fn draw_tile(img: &mut RgbImage, fonts: &Fonts, x: u32, y: u32, tile: &Tile, tex
         img,
         fg,
         tx + SUB_INDENT as i32,
-        y + 135,
+        y + 125,
         Scale::uniform(SUB),
-        &fonts.light,
+        &fonts.bold,
         &text.sub,
     );
     draw_text_mut(
@@ -206,36 +193,39 @@ fn draw_tile(img: &mut RgbImage, fonts: &Fonts, x: u32, y: u32, tile: &Tile, tex
     // Right column: two lines per window, percent left then reset time.
     let rx = (x + RIGHT_X) as i32;
     for (i, (head, reset)) in text.windows.iter().enumerate() {
-        let wy = y + 35 + 100 * i as i32;
+        let wy = y + 30 + 105 * i as i32;
         draw_text_mut(img, fg, rx, wy, Scale::uniform(WINDOW), &fonts.bold, head);
         draw_text_mut(
             img,
             fg,
             rx,
-            wy + 42,
+            wy + 44,
             Scale::uniform(RESET),
-            &fonts.light,
+            &fonts.bold,
             reset,
         );
     }
-}
-
-/// Width in pixels of `text` drawn at `size`.
-fn text_width(font: &Font, size: f32, text: &str) -> u32 {
-    font.layout(text, Scale::uniform(size), point(0.0, 0.0))
-        .filter_map(|g| g.pixel_bounding_box())
-        .map(|b| b.max.x.max(0) as u32)
-        .max()
-        .unwrap_or(0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::{FixedOffset, Utc};
+    use rusttype::point;
 
     const LEFT_ROOM: u32 = RIGHT_X - TEXT_X - 10;
     const RIGHT_ROOM: u32 = TILE_W - RIGHT_X - 20;
+    /// A tile with an error has no window column, so its text can use the whole width.
+    const FULL_ROOM: u32 = TILE_W - 2 * TEXT_X;
+
+    /// Width in pixels of `text` drawn at `size`.
+    fn text_width(font: &Font, size: f32, text: &str) -> u32 {
+        font.layout(text, Scale::uniform(size), point(0.0, 0.0))
+            .filter_map(|g| g.pixel_bounding_box())
+            .map(|b| b.max.x.max(0) as u32)
+            .max()
+            .unwrap_or(0)
+    }
 
     #[test]
     fn tile_text_for_windows_and_problems() {
@@ -287,21 +277,22 @@ mod tests {
             Problem::Offline,
             Problem::BadData,
         ];
-        let subs = problems
+        for sub in problems
             .iter()
             .map(Problem::text)
-            .chain(["no data".to_string(), "left · DAY".to_string()]);
-        for sub in subs {
+            .chain(["no data".to_string()])
+        {
             assert!(
-                text_width(&fonts.light, SUB, &sub) <= LEFT_ROOM - SUB_INDENT,
+                text_width(&fonts.bold, SUB, &sub) <= FULL_ROOM - SUB_INDENT,
                 "too wide: {sub}"
             );
         }
+        assert!(text_width(&fonts.bold, SUB, "left · DAY") <= LEFT_ROOM - SUB_INDENT);
         assert!(text_width(&fonts.bold, WINDOW, "DAY 100%") <= RIGHT_ROOM);
         for day in ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] {
             let reset = format!("{day} 23:59");
             assert!(
-                text_width(&fonts.light, RESET, &reset) <= RIGHT_ROOM,
+                text_width(&fonts.bold, RESET, &reset) <= RIGHT_ROOM,
                 "too wide: {reset}"
             );
         }
