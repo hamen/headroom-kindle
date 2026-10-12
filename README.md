@@ -9,7 +9,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `src/render.rs`: the drawing code (`image` and `imageproc`). We use high-contrast thick fonts (`LiberationSans`) because thin grey lines wash out on old E-Ink screens. Tiles are white with a black border; a tile turns black when its tightest window has less than 20% left, so it stands out.
 - `tests/fixtures/`: hand-written sample responses for the parser tests (`cargo test`, no network).
 - `assets/`: Contains the font (`font.ttf`, LiberationSans Bold) used for rendering. All text is bold: thin text washes out on this e-ink, worst of all white on black.
-- `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, SFTP upload) and runs the screen takeover. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
+- `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, upload through `cat` on the SSH channel because SFTP fails against the Kindle) and runs the screen takeover. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
 - `systemd/`: the user service and timer that run the binary every 10 minutes.
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
 
@@ -60,4 +60,4 @@ The binary exits 0 when the Kindle has drawn the image, even if a provider faile
 ## Inspiration & UI Design
 The UI of this dashboard is heavily inspired by two excellent open-source projects designed specifically for E-Ink displays:
 - [hass-eink-dashboard](https://github.com/cryptomilk/hass-eink-dashboard): Taught us to use thick, high-contrast layouts and grid-based cards to counter the washout effect of old e-ink displays.
-- [Tesserae](https://github.com/dmellok/tesserae): Influenced our current design paradigm (black tiles with white text and massive typography). Inverting the colors on crucial tiles entirely prevents the "thin gray lines" from fading out on the 2012 Pearl E-Ink screen.
+- [Tesserae](https://github.com/dmellok/tesserae): Influenced the tile design (massive typography, and black tiles with white text). Here only a tile whose quota is low turns black, so it stands out on the 2012 Pearl E-Ink screen.
