@@ -1,6 +1,6 @@
 use crate::quota::{format_reset, percent_left, tightest, Problem, Window};
 use chrono::{DateTime, Local, TimeZone};
-use image::imageops::rotate90;
+use image::imageops::rotate270;
 use image::{DynamicImage, GrayImage, ImageOutputFormat, Rgb, RgbImage};
 use imageproc::drawing::{draw_filled_rect_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
@@ -12,7 +12,8 @@ use std::io::Cursor;
 pub const WIDTH: u32 = 758;
 pub const HEIGHT: u32 = 1024;
 /// The dashboard is drawn landscape, for a Kindle standing on its long side with its top edge
-/// to the left, then turned 90 degrees clockwise into the portrait framebuffer.
+/// to the right (USB port and charger on the left), then turned 90 degrees counterclockwise into
+/// the portrait framebuffer.
 const CANVAS_W: u32 = HEIGHT;
 const CANVAS_H: u32 = WIDTH;
 
@@ -144,7 +145,7 @@ pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> GrayImage
         draw_tile(&mut canvas, fonts, x, y, tile, &tile_text(now, &tile.quota));
     }
 
-    DynamicImage::ImageRgb8(rotate90(&canvas)).into_luma8()
+    DynamicImage::ImageRgb8(rotate270(&canvas)).into_luma8()
 }
 
 /// PNG bytes of the dashboard, ready to save or to send to the Kindle.
@@ -362,11 +363,13 @@ mod tests {
         let decoded = image::load_from_memory(&png_bytes(&image)).unwrap();
         assert_eq!(decoded.color(), image::ColorType::L8);
         assert_eq!((decoded.width(), decoded.height()), (WIDTH, HEIGHT));
-        // A landscape canvas point (cx, cy) lands at (WIDTH - 1 - cy, cx) after the clockwise turn.
-        let at = |cx: u32, cy: u32| image.get_pixel(WIDTH - 1 - cy, cx).0;
+        // A landscape canvas point (cx, cy) lands at (cy, HEIGHT - 1 - cx) after the
+        // counterclockwise turn.
+        let at = |cx: u32, cy: u32| image.get_pixel(cy, HEIGHT - 1 - cx).0;
         // Claude has 10% left: black tile. Codex has 90% left: white tile inside its border.
         assert_eq!(at(PADDING + 5, GRID_TOP + 5), [0]);
         assert_eq!(at(PADDING * 2 + TILE_W + 5, GRID_TOP + 5), [255]);
-        assert_eq!(image.get_pixel(5, 5).0, [255]);
+        // The bottom-left corner of the canvas is margin.
+        assert_eq!(at(5, CANVAS_H - 6), [255]);
     }
 }
