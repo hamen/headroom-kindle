@@ -13,7 +13,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
 
 ## How it works
-1. **Render**: The Rust binary fetches the quota of the four providers and generates `dashboard.png` (758x1024) locally: a 2x2 grid with one tile per provider. The big number is the percent left of the tightest window; below it, one line per window with its percent left and its reset time.
+1. **Render**: The Rust binary fetches the quota of the four providers and generates `dashboard.png` (758x1024) locally. The dashboard is drawn landscape (1024x758) for a Kindle standing on its long side with its top edge to the left, then turned 90 degrees clockwise into the portrait framebuffer. It is a 2x2 grid with one tile per provider: the big number is the percent left of the tightest window; on the right, two lines per window with its percent left and its reset time. The PNG must be 8-bit grayscale: `eips` draws an RGB PNG stretched to twice the width.
 2. **Push**: The `push_to_kindle.py` script connects to the Kindle via SSH (USBNetwork on IP `192.168.15.244`).
 3. **Display**: The script kills the native Amazon UI (`stop lab126_gui 2>/dev/null`), clears the ghosting (`eips -c`), and uses the hardware command `eips -f -g` to draw the PNG directly to the e-ink display. The Kindle is then left in a "zombie" state where the screen consumes 0 battery and never goes to sleep.
 
