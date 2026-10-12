@@ -31,3 +31,8 @@ cargo build
 # Push to the Kindle via SSH and force the E-Ink refresh
 python3 scripts/push_to_kindle.py
 ```
+
+## Inspiration & UI Design
+The UI of this dashboard is heavily inspired by two excellent open-source projects designed specifically for E-Ink displays:
+- [hass-eink-dashboard](https://github.com/cryptomilk/hass-eink-dashboard): Taught us to use thick, high-contrast layouts and grid-based cards to counter the washout effect of old e-ink displays.
+- [Tesserae](https://github.com/dmellok/tesserae): Influenced our current design paradigm (black tiles with white text and massive typography). Inverting the colors on crucial tiles entirely prevents the "thin gray lines" from fading out on the 2012 Pearl E-Ink screen.
