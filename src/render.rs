@@ -1,6 +1,6 @@
 use crate::quota::{format_reset, percent_left, tightest, Problem, Window};
 use chrono::{DateTime, Local, TimeZone};
-use image::{Rgb, RgbImage};
+use image::{DynamicImage, GrayImage, Rgb, RgbImage};
 use imageproc::drawing::{draw_filled_rect_mut, draw_hollow_rect_mut, draw_text_mut};
 use imageproc::rect::Rect;
 use rusttype::{Font, Scale};
@@ -85,7 +85,9 @@ where
     }
 }
 
-pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> RgbImage {
+/// The Kindle's `eips -g` needs an 8-bit grayscale PNG: it draws an RGB one stretched to twice
+/// the width, so only the left half of the dashboard shows.
+pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> GrayImage {
     let mut image = RgbImage::from_pixel(WIDTH, HEIGHT, WHITE);
 
     // Big clock and date at the top: the time of this render.
@@ -126,7 +128,7 @@ pub fn render(now: &DateTime<Local>, tiles: &[Tile], fonts: &Fonts) -> RgbImage 
         &fonts.light,
         "Headroom Tesserae System",
     );
-    image
+    DynamicImage::ImageRgb8(image).into_luma8()
 }
 
 fn draw_tile(img: &mut RgbImage, fonts: &Fonts, x: u32, y: u32, tile: &Tile, text: &TileText) {
