@@ -5,7 +5,7 @@ use ssh2::Session;
 use std::fmt::Display;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 /// The Kindle on the USB network link (the "Kindle USB" NetworkManager profile on the PC).
@@ -15,18 +15,20 @@ const USER: &str = "root";
 const PASSWORD_FILE: &str = ".config/headroom-kindle/kindle-password";
 const REMOTE_IMAGE: &str = "/mnt/us/dashboard.png";
 
-/// The shell command run on the Kindle. `stop lab126_gui` keeps the Amazon UI from painting over
-/// the dashboard; once the UI is stopped it does nothing. A full refresh clears the screen twice
-/// to remove ghosting, which flashes it black; a plain one redraws the image in place.
-pub fn draw_command(full: bool) -> String {
-    if full {
+/// The shell command run on the Kindle. It first saves the PNG it reads on stdin: plain `cat`,
+/// because libssh2's SFTP upload fails against the Kindle's SFTP server. `stop lab126_gui` keeps
+/// the Amazon UI from painting over the dashboard; once the UI is stopped it does nothing. A full
+/// refresh clears the screen twice to remove ghosting, which flashes it black; a plain one
+/// redraws the image in place.
+pub fn remote_command(full: bool) -> String {
+    let draw = if full {
         format!(
-            "stop lab126_gui 2>/dev/null; /usr/sbin/eips -c; /usr/sbin/eips -c; sleep 1; \
-             /usr/sbin/eips -f -g {REMOTE_IMAGE}"
+            "/usr/sbin/eips -c; /usr/sbin/eips -c; sleep 1; /usr/sbin/eips -f -g {REMOTE_IMAGE}"
         )
     } else {
-        format!("stop lab126_gui 2>/dev/null; /usr/sbin/eips -g {REMOTE_IMAGE}")
-    }
+        format!("/usr/sbin/eips -g {REMOTE_IMAGE}")
+    };
+    format!("cat > {REMOTE_IMAGE} || exit 1; stop lab126_gui 2>/dev/null; {draw}")
 }
 
 /// `KINDLE_PASSWORD` wins; otherwise the first line of the password file.
@@ -59,15 +61,12 @@ pub fn push(png: &[u8], full: bool) -> Result<(), String> {
         .userauth_password(USER, &password)
         .map_err(step("ssh login"))?;
 
-    let sftp = session.sftp().map_err(step("sftp"))?;
-    let mut file = sftp
-        .create(Path::new(REMOTE_IMAGE))
-        .map_err(step("upload"))?;
-    file.write_all(png).map_err(step("upload"))?;
-    drop(file);
-
     let mut channel = session.channel_session().map_err(step("ssh channel"))?;
-    channel.exec(&draw_command(full)).map_err(step("eips"))?;
+    channel
+        .exec(&remote_command(full))
+        .map_err(step("ssh exec"))?;
+    channel.write_all(png).map_err(step("upload"))?;
+    channel.send_eof().map_err(step("upload"))?;
     let mut output = String::new();
     channel.read_to_string(&mut output).map_err(step("eips"))?;
     let mut errors = String::new();
@@ -78,7 +77,7 @@ pub fn push(png: &[u8], full: bool) -> Result<(), String> {
     channel.wait_close().map_err(step("eips"))?;
     match channel.exit_status().map_err(step("eips"))? {
         0 => Ok(()),
-        status => Err(format!("eips exited {status}: {}", errors.trim())),
+        status => Err(format!("Kindle command exited {status}: {}", errors.trim())),
     }
 }
 
@@ -91,16 +90,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn full_refresh_clears_before_drawing() {
-        let full = draw_command(true);
-        assert!(full.starts_with("stop lab126_gui"));
+    fn full_refresh_saves_then_clears_before_drawing() {
+        let full = remote_command(true);
+        assert!(full.starts_with("cat > /mnt/us/dashboard.png || exit 1; stop lab126_gui"));
         assert_eq!(full.matches("eips -c").count(), 2);
         assert!(full.ends_with("eips -f -g /mnt/us/dashboard.png"));
     }
 
     #[test]
     fn plain_refresh_only_redraws() {
-        let plain = draw_command(false);
+        let plain = remote_command(false);
+        assert!(plain.starts_with("cat > /mnt/us/dashboard.png || exit 1; "));
         assert!(!plain.contains("eips -c"));
         assert!(plain.ends_with("eips -g /mnt/us/dashboard.png"));
     }
