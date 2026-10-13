@@ -34,8 +34,9 @@ pub fn parse_weekly(body: &str) -> Result<Option<Window>, Problem> {
         return Ok(None);
     };
     // Right after a reset the proxy leaves the percent out but keeps the period: nothing used yet.
+    // A percent that is there but null is not a reset: like Headroom, fall through to monthly.
     let used = match v.get("creditUsagePercent") {
-        None | Some(Value::Null) => 0.0,
+        None => 0.0,
         percent => match number(percent) {
             Some(p) if (0.0..=100.0).contains(&p) => p,
             _ => return Ok(None),
@@ -111,6 +112,9 @@ mod tests {
         let out_of_range =
             r#"{"creditUsagePercent": 140, "currentPeriod": {"end": "2026-10-15T00:00:00Z"}}"#;
         assert_eq!(parse_weekly(out_of_range).unwrap(), None);
+        let null_percent =
+            r#"{"creditUsagePercent": null, "currentPeriod": {"end": "2026-10-15T00:00:00Z"}}"#;
+        assert_eq!(parse_weekly(null_percent).unwrap(), None);
     }
 
     #[test]

@@ -59,7 +59,8 @@ pub fn tightest(windows: &[Window]) -> Option<&Window> {
     })
 }
 
-/// "HH:MM" when the reset is less than a day away, "DDD HH:MM" after that, "--" when unknown.
+/// "HH:MM" when the reset is less than a day away, "DDD HH:MM" after that, "--" when unknown or
+/// already past (a clock time for a past reset would read as a future one).
 pub fn format_reset<Tz: TimeZone>(now: &DateTime<Tz>, reset: Option<DateTime<Utc>>) -> String
 where
     Tz::Offset: Display,
@@ -69,7 +70,10 @@ where
     };
     // The APIs send instants like 20:59:59.6; show them as the minute they round to.
     let local = (reset + Duration::seconds(30)).with_timezone(&now.timezone());
-    if local.clone() - now.clone() < Duration::hours(24) {
+    let until = local.clone() - now.clone();
+    if until < Duration::zero() {
+        "--".to_string()
+    } else if until < Duration::hours(24) {
         local.format("%H:%M").to_string()
     } else {
         local.format("%a %H:%M").to_string().to_uppercase()
@@ -103,6 +107,7 @@ mod tests {
         assert_eq!(percent_left(&window("5H", 27.4)), 73);
         assert_eq!(percent_left(&window("5H", 120.0)), 0);
         assert_eq!(percent_left(&window("5H", 0.0)), 100);
+        assert_eq!(percent_left(&window("5H", -5.0)), 100);
     }
 
     #[test]
@@ -123,5 +128,7 @@ mod tests {
         assert_eq!(format_reset(&now, None), "--");
         let almost = Utc.with_ymd_and_hms(2026, 10, 17, 18, 59, 59).unwrap();
         assert_eq!(format_reset(&now, Some(almost)), "SAT 21:00");
+        let days_ago = Utc.with_ymd_and_hms(2026, 10, 10, 7, 0, 0).unwrap();
+        assert_eq!(format_reset(&now, Some(days_ago)), "--");
     }
 }

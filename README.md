@@ -9,7 +9,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `src/render.rs`: the drawing code (`image` and `imageproc`). We use high-contrast thick fonts (`LiberationSans`) because thin grey lines wash out on old E-Ink screens. Tiles are white with a black border; a tile turns black when its tightest window has less than 20% left, so it stands out.
 - `tests/fixtures/`: hand-written sample responses for the parser tests (`cargo test`, no network).
 - `assets/`: Contains the font (`font.ttf`, LiberationSans Bold, with its license in `OFL.txt`) used for rendering. All text is bold: thin text washes out on this e-ink, worst of all white on black.
-- `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, upload through `cat` on the SSH channel because SFTP fails against the Kindle) and runs the screen takeover. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
+- `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, upload through `cat` on the SSH channel because SFTP fails against the Kindle) and runs the screen takeover. The first run pins the Kindle's SSH host key in `~/.config/headroom-kindle/kindle-host-key`; after that a different key stops the push before the password is sent. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
 - `systemd/`: the user service and timer that run the binary every 10 minutes.
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
 
