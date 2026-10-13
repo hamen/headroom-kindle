@@ -68,9 +68,10 @@ where
     let Some(reset) = reset else {
         return "--".to_string();
     };
-    // The APIs send instants like 20:59:59.6; show them as the minute they round to.
+    // Past and "within a day" are decided on the real instant; the 30 s only rounds the minute shown
+    // (the APIs send instants like 20:59:59.6).
+    let until = reset.with_timezone(&now.timezone()) - now.clone();
     let local = (reset + Duration::seconds(30)).with_timezone(&now.timezone());
-    let until = local.clone() - now.clone();
     if until < Duration::zero() {
         "--".to_string()
     } else if until < Duration::hours(24) {
@@ -130,5 +131,11 @@ mod tests {
         assert_eq!(format_reset(&now, Some(almost)), "SAT 21:00");
         let days_ago = Utc.with_ymd_and_hms(2026, 10, 10, 7, 0, 0).unwrap();
         assert_eq!(format_reset(&now, Some(days_ago)), "--");
+        // 19:59:40 in Rome: 20 s ago, so past, even though it rounds to 20:00.
+        let seconds_ago = Utc.with_ymd_and_hms(2026, 10, 12, 17, 59, 40).unwrap();
+        assert_eq!(format_reset(&now, Some(seconds_ago)), "--");
+        // 23 h 59 m 50 s away: within a day, shown as the minute it rounds to.
+        let just_inside = Utc.with_ymd_and_hms(2026, 10, 13, 17, 59, 50).unwrap();
+        assert_eq!(format_reset(&now, Some(just_inside)), "20:00");
     }
 }

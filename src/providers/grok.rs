@@ -140,5 +140,9 @@ mod tests {
             Err(Problem::BadData)
         );
         assert_eq!(parse_monthly("{}"), Err(Problem::BadData));
+        assert_eq!(
+            parse_monthly(r#"{"monthlyLimit": "Infinity", "used": 10}"#),
+            Err(Problem::BadData)
+        );
     }
 }

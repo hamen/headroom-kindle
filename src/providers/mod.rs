@@ -36,6 +36,8 @@ fn number(v: Option<&Value>) -> Option<f64> {
         Value::String(s) => s.trim().parse().ok(),
         _ => None,
     }
+    // "Infinity" and "NaN" parse as f64 too; they are not a quota.
+    .filter(|n: &f64| n.is_finite())
 }
 
 /// A usable "percent used": a number that is not negative.
@@ -51,5 +53,26 @@ fn rfc3339(v: Option<&Value>) -> Result<Option<DateTime<Utc>>, Problem> {
             .map(|d| Some(d.with_timezone(&Utc)))
             .map_err(|_| Problem::BadData),
         Some(_) => Err(Problem::BadData),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn number_takes_finite_numbers_and_numeric_strings_only() {
+        assert_eq!(number(Some(&json!(12.5))), Some(12.5));
+        assert_eq!(number(Some(&json!(" 40 "))), Some(40.0));
+        for not_a_quota in [
+            json!("Infinity"),
+            json!("-inf"),
+            json!("NaN"),
+            json!("abc"),
+            json!(null),
+        ] {
+            assert_eq!(number(Some(&not_a_quota)), None);
+        }
     }
 }

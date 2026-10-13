@@ -57,15 +57,28 @@ pub enum HostKey {
     New,
 }
 
-/// Compares the Kindle's host key fingerprint with the pinned one. A different key is an error, so
-/// the root password never goes to another machine that answers at the Kindle's address.
+/// Compares the Kindle's host key fingerprint with the pinned one. Only "nothing pinned" (`None`)
+/// allows a first pin; a different or empty pin is an error, so the root password never goes to
+/// another machine that answers at the Kindle's address.
 pub fn check_host_key(pinned: Option<&str>, actual: &str) -> Result<HostKey, String> {
-    match pinned.map(str::trim).filter(|p| !p.is_empty()) {
+    match pinned.map(str::trim) {
         None => Ok(HostKey::New),
         Some(p) if p == actual => Ok(HostKey::Known),
         Some(p) => Err(format!(
-            "the Kindle's SSH host key changed (pinned {p}, got {actual}), no password sent. \
-             If the Kindle was reset or jailbroken again, delete ~/{HOST_KEY_FILE}"
+            "the Kindle's SSH host key does not match the pin (pinned {p:?}, got {actual}), \
+             no password sent. If the Kindle was reset or jailbroken again, delete ~/{HOST_KEY_FILE}"
+        )),
+    }
+}
+
+/// The pin file's content. Only a missing file means "nothing pinned"; any other read error stops
+/// the push, so a file that exists but cannot be read is never replaced by a new pin.
+pub fn read_pin(read: std::io::Result<String>) -> Result<Option<String>, String> {
+    match read {
+        Ok(pin) => Ok(Some(pin)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!(
+            "cannot read the pinned host key ~/{HOST_KEY_FILE}: {e}, no password sent"
         )),
     }
 }
@@ -78,7 +91,7 @@ fn verify_host_key(session: &Session) -> Result<(), String> {
     let path = std::env::var_os("HOME")
         .map(|home| PathBuf::from(home).join(HOST_KEY_FILE))
         .ok_or("HOME is not set")?;
-    let pinned = std::fs::read_to_string(&path).ok();
+    let pinned = read_pin(std::fs::read_to_string(&path))?;
     if check_host_key(pinned.as_deref(), &actual)? == HostKey::New {
         if let Some(dir) = path.parent() {
             let _ = std::fs::create_dir_all(dir);
@@ -162,12 +175,34 @@ mod tests {
     #[test]
     fn host_key_is_pinned_then_enforced() {
         assert_eq!(check_host_key(None, "ab12").unwrap(), HostKey::New);
-        assert_eq!(check_host_key(Some("\n"), "ab12").unwrap(), HostKey::New);
         assert_eq!(
             check_host_key(Some("ab12\n"), "ab12").unwrap(),
             HostKey::Known
         );
         let changed = check_host_key(Some("ab12"), "cd34").unwrap_err();
-        assert!(changed.contains("changed") && changed.contains("no password sent"));
+        assert!(changed.contains("does not match") && changed.contains("no password sent"));
+        let empty = check_host_key(Some("\n"), "ab12").unwrap_err();
+        assert!(empty.contains("no password sent"));
+    }
+
+    #[test]
+    fn only_a_missing_pin_file_allows_a_first_pin() {
+        use std::io::{Error, ErrorKind};
+        assert_eq!(
+            read_pin(Ok("ab12\n".to_string())).unwrap().unwrap(),
+            "ab12\n"
+        );
+        assert_eq!(
+            read_pin(Err(Error::from(ErrorKind::NotFound))).unwrap(),
+            None
+        );
+        for kind in [
+            ErrorKind::PermissionDenied,
+            ErrorKind::InvalidData,
+            ErrorKind::IsADirectory,
+        ] {
+            let error = read_pin(Err(Error::from(kind))).unwrap_err();
+            assert!(error.contains("no password sent"));
+        }
     }
 }
