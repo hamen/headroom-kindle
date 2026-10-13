@@ -12,8 +12,8 @@
 [![Quota: Claude, Codex, Z.AI, Grok](https://img.shields.io/badge/quota-Claude%20%C2%B7%20Codex%20%C2%B7%20Z.AI%20%C2%B7%20Grok-3fb950)](#data-sources)
 [![Endpoints from Headroom](https://img.shields.io/badge/endpoints%20from-Headroom-f0883e)](https://github.com/rock3r/headroom)
 [![systemd: every 10 min](https://img.shields.io/badge/systemd-every%2010%20min-30363d?logo=linux&logoColor=white)](systemd/headroom-kindle.timer)
-[![Hacked with GLM](https://img.shields.io/badge/hacked%20with-GLM-1f6feb)](KINDLE_HACKS.md)
-[![Polished with Claude Code](https://img.shields.io/badge/polished%20with-Claude%20Code-D97757?logo=claude&logoColor=white)](https://claude.com/claude-code)
+[![Hacked with GLM](https://img.shields.io/badge/hacked%20with-GLM-1f6feb)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
+[![Polished with Claude Code](https://img.shields.io/badge/polished%20with-Claude%20Code-D97757?logo=claude&logoColor=white)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
 [![Blog: the full story](https://img.shields.io/badge/blog-the%20full%20story-8b5cf6)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
 
 </div>
