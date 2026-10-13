@@ -37,7 +37,7 @@ These are undocumented endpoints. They can change at any time; then only that ti
 ## Dependencies
 - Rust / Cargo (`ssh2` builds its own libssh2; it needs the OpenSSL headers that `reqwest` already uses)
 - A Jailbroken Kindle PW1 with **USBNetwork** enabled (`;un`), on the USB cable.
-- The Kindle root password (KINDLE_HACKS.md, section 4) in `~/.config/headroom-kindle/kindle-password` (mode 600), or in `KINDLE_PASSWORD`. It is not in the repo.
+- The Kindle root password (derived from the serial number, see KINDLE_HACKS.md section 4) in `~/.config/headroom-kindle/kindle-password` (mode 600), or in `KINDLE_PASSWORD`. It is not in the repo.
 
 ## Usage
 ```bash
