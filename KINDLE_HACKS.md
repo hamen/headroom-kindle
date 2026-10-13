@@ -26,9 +26,9 @@ Because KUAL and native screensaver hacks (`linkss`) were being aggressively ove
 - Installed **USBNetwork** via MRPI (`;log mrpi`).
 - Activated the daemon via the search bar: `;un`.
 - Connected via USB. The Kindle exposes an RNDIS network interface (`enxee4900000000`).
-- Configured local IP: `sudo ip addr add 192.168.15.201/24 dev enxee4900000000`.
+- Configured local IP: `sudo ip addr add 192.168.15.201/24 dev enxee4900000000`. Now a NetworkManager profile ("Kindle USB", static 192.168.15.201, autoconnect) does this every time the cable goes in.
 - The Kindle IP is always `192.168.15.244`.
-- **Root Password**: Derived from the Serial Number. For our PW1 (`B024...`), the password is `***REMOVED***` (or `fionae577` on older FW).
+- **Root Password**: Derived from the Serial Number. It is not in this repo: the binary reads it from `~/.config/headroom-kindle/kindle-password` (mode 600) or from `KINDLE_PASSWORD`.
 - **SSH Key Injection**: We used a Python `paramiko` script to inject `id_rsa.pub` into `/root/.ssh/authorized_keys` and `/mnt/us/usbnet/etc/authorized_keys` to bypass password prompts permanently.
 
 ## 5. Controlling the E-Ink Display (The Final Battle)
@@ -58,5 +58,7 @@ stop lab126_gui 2>/dev/null
 To restore the Kindle to normal reading mode, perform a hard reboot (hold the power button for 40 seconds) to restart the `lab126_gui` framework.
 
 ## 6. The Automation Pipeline (Paramiko & Rust)
-- **Rust Dashboard**: Generates the 758x1024 grayscale UI. We adopted a *Tesserae / Windows Phone* tile design, using completely black tiles with white text for maximum e-ink contrast, abandoning thinner fonts that washed out.
-- **Python Paramiko Deployment**: We abandoned bash `scp`/`ssh` because `ssh-agent` intercepted the calls and demanded local passphrases, breaking automation. We wrote `scripts/push_to_kindle.py` using `paramiko` to silently authenticate, upload `dashboard.png`, and execute the `eips` screen takeover in one go.
+- **Rust Dashboard**: Generates the 758x1024 grayscale UI. It started as a *Tesserae / Windows Phone* design with black tiles and white text. On this screen the light font washed out, worst of all white on black, so now all text is bold, tiles are white with a black border, and a tile turns black only when its quota is low (less than 20% left). It is drawn landscape (1024x758) and turned 90 degrees counterclockwise, for the Kindle standing on its long side with the USB port on the left.
+- **Python Paramiko Deployment** (removed 2026-10-12, see the next item): We abandoned bash `scp`/`ssh` because `ssh-agent` intercepted the calls and demanded local passphrases, breaking automation. We wrote `scripts/push_to_kindle.py` using `paramiko` to silently authenticate, upload `dashboard.png`, and execute the `eips` screen takeover in one go.
+- **Rust push (2026-10-12)**: The paramiko script moved into the Rust binary (`src/kindle.rs`, `ssh2` crate) so one executable fetches, renders and draws. Same flow: password login (no `ssh-agent`), upload, `eips` takeover. The upload is `cat > /mnt/us/dashboard.png` with the PNG on the SSH channel's stdin, because libssh2's SFTP upload fails against the Kindle ("failed to write whole buffer"). A systemd user timer runs it every 10 minutes over the USB cable.
+- **Grayscale only**: `eips -g` draws an RGB PNG stretched to twice the width (only the left half shows). The PNG must be 8-bit grayscale.
