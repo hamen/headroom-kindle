@@ -1,3 +1,23 @@
+<p align="center">
+  <img src="docs/header.png" alt="headroom-kindle: your AI quota on a 2012 Kindle Paperwhite. The e-ink screen shows one tile each for Claude, Codex, Z.AI and Grok, redrawn every 10 minutes." width="100%">
+</p>
+
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Font: OFL-1.1](https://img.shields.io/badge/font-OFL--1.1-blue.svg)](assets/OFL.txt)
+[![Rust 2021 edition](https://img.shields.io/badge/Rust-2021%20edition-000000?logo=rust&logoColor=white)](Cargo.toml)
+[![Kindle Paperwhite 1 (2012)](https://img.shields.io/badge/Kindle-Paperwhite%201%20%282012%29-232F3E)](KINDLE_HACKS.md)
+[![Firmware 5.6.1.1, jailbroken](https://img.shields.io/badge/firmware-5.6.1.1%20jailbroken-555)](KINDLE_HACKS.md)
+[![Quota: Claude, Codex, Z.AI, Grok](https://img.shields.io/badge/quota-Claude%20%C2%B7%20Codex%20%C2%B7%20Z.AI%20%C2%B7%20Grok-3fb950)](#data-sources)
+[![Endpoints from Headroom](https://img.shields.io/badge/endpoints%20from-Headroom-f0883e)](https://github.com/rock3r/headroom)
+[![systemd: every 10 min](https://img.shields.io/badge/systemd-every%2010%20min-30363d?logo=linux&logoColor=white)](systemd/headroom-kindle.timer)
+[![Hacked with GLM](https://img.shields.io/badge/hacked%20with-GLM-1f6feb)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
+[![Polished with Claude Code](https://img.shields.io/badge/polished%20with-Claude%20Code-D97757?logo=claude&logoColor=white)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
+[![Blog: the full story](https://img.shields.io/badge/blog-the%20full%20story-8b5cf6)](https://www.ivanmorgillo.com/2026/10/13/kindle-ai-quota-dashboard/)
+
+</div>
+
 # Headroom Kindle E-Ink Dashboard
 
 A Rust-based dashboard generator and deployment pipeline to turn a Kindle Paperwhite 1 (2012) into a passive, battery-efficient E-Ink display. 
@@ -12,6 +32,7 @@ The dashboard generates a Tesserae/Home-Assistant style image with the AI subscr
 - `src/kindle.rs`: pushes the PNG to the Kindle over SSH (`ssh2`, password login, upload through `cat` on the SSH channel because SFTP fails against the Kindle) and runs the screen takeover. The first run pins the Kindle's SSH host key in `~/.config/headroom-kindle/kindle-host-key`; after that a different key stops the push before the password is sent. It never goes through `ssh-agent`, whose passphrase prompts broke automation in bash.
 - `systemd/`: the user service and timer that run the binary every 10 minutes.
 - `KINDLE_HACKS.md`: **MUST READ.** Extremely detailed documentation on the jailbreaking process, fighting the firmware 5.6.1.1 UI watchdogs, the discovery of the `fbink` image-support missing feature, and the ultimate `eips` solution.
+- `docs/`: the README header. `header.html` is rendered to `header.png` with headless Chrome at 1280x640; `header-dashboard.png` is a real `--no-push` render, turned back to landscape.
 
 ## How it works
 1. **Render**: The binary fetches the quota of the four providers and renders the dashboard (758x1024) in memory. The dashboard is drawn landscape (1024x758) for a Kindle standing on its long side with its top edge to the right (USB port and charger on the left), then turned 90 degrees counterclockwise into the portrait framebuffer. A thin header shows the date and `updated HH:MM` (no clock: the screen changes only every 10 minutes). Below it, a 2x2 grid with one tile per provider: the big number is the percent left of the tightest window; on the right, two lines per window with its percent left and its reset time. The PNG must be 8-bit grayscale: `eips` draws an RGB PNG stretched to twice the width.
